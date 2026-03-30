@@ -1,0 +1,6 @@
+@AirlineTicketing.Gateway_HostAddress = http://localhost:5026
+
+GET {{AirlineTicketing.Gateway_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
