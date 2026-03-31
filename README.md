@@ -343,13 +343,14 @@ export default function () {
 
 ## 📊 Response Time Distribution (ms)
 
+```text
 Query Flight
 ms
 │
-│           *
-│        *
-│     *
-│  *
+│            *
+│         *
+│      *
+│   *
 │ *
 └────────────────────
    20   50   100 VUs
@@ -364,10 +365,11 @@ ms
 │ *
 └────────────────────
    20   50   100 VUs
-
+```
 
 ## 🚀 Throughput (Requests per Second)
 
+```text
 Query Flight
 req/sec
 │
@@ -379,7 +381,6 @@ req/sec
     20     50     100
 
 Buy Ticket
-
 req/sec
 │
 │   █████████████████     (~831)
@@ -388,6 +389,7 @@ req/sec
 │
 └────────────────────────
     20     50     100
+```
 
 ---
 
