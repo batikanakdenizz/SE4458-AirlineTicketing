@@ -80,7 +80,11 @@ public class FlightService : IFlightService
         };
     }
 
-    public async Task<FlightPassengerListResponseDto> GetPassengerListAsync(string flightNumber, DateTime departureDate)
+    public async Task<FlightPassengerListResponseDto> GetPassengerListAsync(
+    string flightNumber,
+    DateTime departureDate,
+    int page = 1,
+    int size = 10)
     {
         var flight = await _context.Flights
             .FirstOrDefaultAsync(f =>
@@ -92,23 +96,37 @@ public class FlightService : IFlightService
             throw new Exception("Flight not found.");
         }
 
-        var passengers = await _context.CheckIns
-            .Include(c => c.Ticket)
-            .Where(c => c.Ticket.FlightId == flight.Id)
-            .OrderBy(c => c.SeatNumber)
-            .Select(c => new PassengerListItemDto
-            {
-                PassengerName = c.Ticket.PassengerName,
-                SeatNumber = c.SeatNumber
-            })
-            .ToListAsync();
+        if (page <= 0) page = 1;
+    if (size <= 0) size = 10;
+
+    var baseQuery = _context.CheckIns
+    .Include(c => c.Ticket)
+    .Where(c => c.Ticket.FlightId == flight.Id)
+    .OrderBy(c => c.SeatNumber);
+
+    var totalCount = await baseQuery.CountAsync();
+
+    var passengers = await baseQuery
+    .Skip((page - 1) * size)
+    .Take(size)
+    .Select(c => new PassengerListItemDto
+    {
+        PassengerName = c.Ticket.PassengerName,
+        SeatNumber = c.SeatNumber
+    })
+    .ToListAsync();
 
         return new FlightPassengerListResponseDto
-        {
-            FlightNumber = flight.FlightNumber,
-            DepartureTime = flight.DepartureTime,
-            Passengers = passengers
-        };
+{
+    FlightNumber = flight.FlightNumber,
+    DepartureTime = flight.DepartureTime,
+    Passengers = passengers,
+    Page = page,
+    Size = size,
+    TotalCount = totalCount,
+    TotalPages = (int)Math.Ceiling(totalCount / (double)size)
+};
+
     }
 
     public async Task<FlightUploadResponseDto> UploadFlightsAsync(Stream fileStream)

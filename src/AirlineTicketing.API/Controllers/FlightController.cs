@@ -36,11 +36,14 @@ public class FlightController : ControllerBase
 
 
     [HttpGet("passengers")]
+    [Authorize]
 public async Task<IActionResult> GetPassengerList(
     [FromQuery] string flightNumber,
-    [FromQuery] DateTime departureDate)
+    [FromQuery] DateTime departureDate,
+    [FromQuery] int page = 1,
+    [FromQuery] int size = 10)
 {
-    var result = await _flightService.GetPassengerListAsync(flightNumber, departureDate);
+    var result = await _flightService.GetPassengerListAsync(flightNumber, departureDate, page, size);
     return Ok(result);
 }
 

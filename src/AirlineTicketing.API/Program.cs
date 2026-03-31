@@ -7,12 +7,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using AirlineTicketing.Domain.Entities;
 using AirlineTicketing.Infrastructure.Services;
-using AirlineTicketing.Infrastructure.Services;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddScoped<IFlightService, FlightService>();
-// Add services to the container.
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -87,6 +86,9 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
+  
+    context.Database.Migrate();
+
     if (!context.Users.Any())
     {
         context.Users.Add(new AirlineTicketing.Domain.Entities.User
@@ -100,11 +102,12 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(options =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Airline Ticketing API v1");
+    options.RoutePrefix = string.Empty; 
+});
 
 app.UseHttpsRedirection();
 
