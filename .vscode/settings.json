@@ -1,0 +1,4 @@
+{
+    "appService.defaultWebAppToDeploy": "/subscriptions/2b8d2f90-ae85-40fa-98c5-bfb792f360c1/resourceGroups/SE4458-Midterm/providers/Microsoft.Web/sites/API-midterm",
+    "appService.deploySubpath": "src\\AirlineTicketing.API"
+}
