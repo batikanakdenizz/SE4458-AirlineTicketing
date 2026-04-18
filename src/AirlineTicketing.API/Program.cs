@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using AirlineTicketing.Domain.Entities;
 using AirlineTicketing.Infrastructure.Services;
+using AirlineTicketing.API.Middleware;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,7 +15,6 @@ builder.Services.AddScoped<IFlightService, FlightService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -25,6 +25,7 @@ builder.Services.Configure<JwtSettings>(
 builder.Services.AddScoped<ITicketService, TicketService>();
 
 builder.Services.AddScoped<ICheckInService, CheckInService>();
+builder.Services.AddScoped<IBookingService, BookingService>();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>()
                   ?? throw new InvalidOperationException("JwtSettings configuration is missing.");
@@ -111,6 +112,8 @@ app.UseSwaggerUI(options =>
     options.SwaggerEndpoint("/swagger/v1/swagger.json", "Airline Ticketing API v1");
     options.RoutePrefix = string.Empty; 
 });
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseHttpsRedirection();
 

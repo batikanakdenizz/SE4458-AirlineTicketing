@@ -33,5 +33,15 @@ public class TicketConfiguration : IEntityTypeConfiguration<Ticket>
             .WithMany(f => f.Tickets)
             .HasForeignKey(t => t.FlightId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(t => t.Booking)
+            .WithMany(b => b.Tickets)
+            .HasForeignKey(t => t.BookingId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(t => t.Passenger)
+            .WithMany(p => p.Tickets)
+            .HasForeignKey(t => t.PassengerId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

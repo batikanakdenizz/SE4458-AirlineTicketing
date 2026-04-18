@@ -4,28 +4,43 @@
       "DownstreamPathTemplate": "/api/v1/Auth/login",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
-        { "Host": "api-midterm-bgareudhf2aaakar.francecentral-01.azurewebsites.net", "Port": 443 }
+        {
+          "Host": "backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net",
+          "Port": 443
+        }
       ],
       "UpstreamPathTemplate": "/gateway/auth/login",
-      "UpstreamHttpMethod": [ "POST" ]
+      "UpstreamHttpMethod": [
+        "POST"
+      ]
     },
     {
       "DownstreamPathTemplate": "/api/v1/Flight",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
-        { "Host": "api-midterm-bgareudhf2aaakar.francecentral-01.azurewebsites.net", "Port": 443 }
+        {
+          "Host": "backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net",
+          "Port": 443
+        }
       ],
       "UpstreamPathTemplate": "/gateway/flights",
-      "UpstreamHttpMethod": [ "POST" ]
+      "UpstreamHttpMethod": [
+        "POST"
+      ]
     },
     {
       "DownstreamPathTemplate": "/api/v1/Flight/query",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
-        { "Host": "api-midterm-bgareudhf2aaakar.francecentral-01.azurewebsites.net", "Port": 443 }
+        {
+          "Host": "backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net",
+          "Port": 443
+        }
       ],
       "UpstreamPathTemplate": "/gateway/flights/query",
-      "UpstreamHttpMethod": [ "GET" ],
+      "UpstreamHttpMethod": [
+        "GET"
+      ],
       "RateLimitOptions": {
         "EnableRateLimiting": true,
         "ClientIdHeader": "Client",
@@ -37,37 +52,113 @@
       "DownstreamPathTemplate": "/api/v1/Flight/upload",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
-        { "Host": "api-midterm-bgareudhf2aaakar.francecentral-01.azurewebsites.net", "Port": 443 }
+        {
+          "Host": "backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net",
+          "Port": 443
+        }
       ],
       "UpstreamPathTemplate": "/gateway/flights/upload",
-      "UpstreamHttpMethod": [ "POST" ]
+      "UpstreamHttpMethod": [
+        "POST"
+      ]
     },
     {
       "DownstreamPathTemplate": "/api/v1/Flight/passengers",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
-        { "Host": "api-midterm-bgareudhf2aaakar.francecentral-01.azurewebsites.net", "Port": 443 }
+        {
+          "Host": "backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net",
+          "Port": 443
+        }
       ],
       "UpstreamPathTemplate": "/gateway/flights/passengers",
-      "UpstreamHttpMethod": [ "GET" ]
+      "UpstreamHttpMethod": [
+        "GET"
+      ]
     },
     {
       "DownstreamPathTemplate": "/api/v1/Ticket",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
-        { "Host": "api-midterm-bgareudhf2aaakar.francecentral-01.azurewebsites.net", "Port": 443 }
+        {
+          "Host": "backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net",
+          "Port": 443
+        }
       ],
       "UpstreamPathTemplate": "/gateway/tickets",
-      "UpstreamHttpMethod": [ "POST" ]
+      "UpstreamHttpMethod": [
+        "POST"
+      ]
     },
     {
       "DownstreamPathTemplate": "/api/v1/CheckIn",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
-        { "Host": "api-midterm-bgareudhf2aaakar.francecentral-01.azurewebsites.net", "Port": 443 }
+        {
+          "Host": "backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net",
+          "Port": 443
+        }
       ],
       "UpstreamPathTemplate": "/gateway/checkin",
-      "UpstreamHttpMethod": [ "POST" ]
+      "UpstreamHttpMethod": [
+        "POST"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/v1/Bookings",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/bookings",
+      "UpstreamHttpMethod": [
+        "POST"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/v1/Bookings/{pnrCode}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/bookings/{pnrCode}",
+      "UpstreamHttpMethod": [
+        "GET"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/health/live",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/health/live",
+      "UpstreamHttpMethod": [
+        "GET"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/health/ready",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/health/ready",
+      "UpstreamHttpMethod": [
+        "GET"
+      ]
     }
   ],
   "GlobalConfiguration": {}

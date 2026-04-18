@@ -7,6 +7,7 @@ export const options = {
 };
 
 export default function () {
+  const baseUrl = __ENV.BASE_URL || 'http://localhost:5173';
   const uniqueId = `${__VU}-${__ITER}-${Date.now()}`;
 
   const payload = JSON.stringify({
@@ -19,7 +20,7 @@ export default function () {
 
   const token = __ENV.TOKEN;
 
-  const res = http.post('http://localhost:5173/api/v1/Ticket', payload, {
+  const res = http.post(`${baseUrl}/api/v1/Ticket`, payload, {
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',

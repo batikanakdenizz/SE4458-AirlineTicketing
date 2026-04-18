@@ -7,8 +7,9 @@ export const options = {
 };
 
 export default function () {
+  const baseUrl = __ENV.BASE_URL || 'http://localhost:5173';
   const url =
-    'http://localhost:5173/api/v1/Flight/query' +
+    `${baseUrl}/api/v1/Flight/query` +
     '?airportFrom=ADB' +
     '&airportTo=IST' +
     '&departureDateFrom=2026-04-01T00:00:00Z' +

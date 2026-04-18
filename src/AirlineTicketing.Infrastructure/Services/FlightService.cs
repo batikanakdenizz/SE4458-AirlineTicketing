@@ -2,6 +2,7 @@ using AirlineTicketing.Application.DTOs;
 using AirlineTicketing.Application.DTOs.Flight;
 using AirlineTicketing.Application.Interfaces;
 using AirlineTicketing.Domain.Entities;
+using AirlineTicketing.Domain.Enums;
 using AirlineTicketing.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +10,7 @@ namespace AirlineTicketing.Infrastructure.Services;
 
 public class FlightService : IFlightService
 {
+    private const int PageSizeLimit = 10;
     private readonly AppDbContext _context;
 
     public FlightService(AppDbContext context)
@@ -18,18 +20,49 @@ public class FlightService : IFlightService
 
     public async Task<int> CreateFlightAsync(CreateFlightDto dto)
     {
-        var duration = (int)(dto.ArrivalTime - dto.DepartureTime).TotalMinutes;
+        if (string.IsNullOrWhiteSpace(dto.FlightNumber))
+        {
+            throw new ArgumentException("Flight number is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(dto.AirportFrom) || string.IsNullOrWhiteSpace(dto.AirportTo))
+        {
+            throw new ArgumentException("Departure and arrival airports are required.");
+        }
+
+        if (dto.Capacity <= 0)
+        {
+            throw new ArgumentException("Capacity must be greater than zero.");
+        }
+
+        if (dto.ArrivalTime <= dto.DepartureTime)
+        {
+            throw new ArgumentException("Arrival time must be after departure time.");
+        }
+
+        var flightNumber = dto.FlightNumber.Trim();
+        var departureTime = EnsureUtc(dto.DepartureTime);
+        var arrivalTime = EnsureUtc(dto.ArrivalTime);
+
+        var exists = await _context.Flights.AnyAsync(f =>
+            f.FlightNumber == flightNumber &&
+            f.DepartureTime == departureTime);
+
+        if (exists)
+        {
+            throw new InvalidOperationException("A flight with the same flight number and departure time already exists.");
+        }
 
         var flight = new Flight
         {
-            FlightNumber = dto.FlightNumber,
-            DepartureTime = dto.DepartureTime,
-            ArrivalTime = dto.ArrivalTime,
-            AirportFrom = dto.AirportFrom,
-            AirportTo = dto.AirportTo,
+            FlightNumber = flightNumber,
+            DepartureTime = departureTime,
+            ArrivalTime = arrivalTime,
+            AirportFrom = dto.AirportFrom.Trim(),
+            AirportTo = dto.AirportTo.Trim(),
             Capacity = dto.Capacity,
             AvailableSeats = dto.Capacity,
-            DurationMinutes = duration,
+            DurationMinutes = (int)(arrivalTime - departureTime).TotalMinutes,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -41,12 +74,23 @@ public class FlightService : IFlightService
 
     public async Task<QueryFlightsResponseDto> QueryFlightsAsync(QueryFlightsRequestDto dto)
     {
+        if (dto.IsRoundTrip && (!dto.ReturnDateFrom.HasValue || !dto.ReturnDateTo.HasValue))
+        {
+            throw new ArgumentException("ReturnDateFrom and ReturnDateTo are required for round-trip queries.");
+        }
+
+        var departureDateFrom = EnsureUtc(dto.DepartureDateFrom);
+        var departureDateTo = EnsureUtc(dto.DepartureDateTo);
+
         var outboundBaseQuery = _context.Flights
             .Where(f =>
-                f.DepartureTime >= dto.DepartureDateFrom &&
-                f.DepartureTime <= dto.DepartureDateTo &&
+                f.DepartureTime >= departureDateFrom &&
+                f.DepartureTime <= departureDateTo &&
                 f.AirportFrom == dto.AirportFrom &&
                 f.AirportTo == dto.AirportTo &&
+                f.Status != FlightStatus.Cancelled &&
+                f.Status != FlightStatus.Departed &&
+                f.Status != FlightStatus.Arrived &&
                 f.AvailableSeats >= dto.NumberOfPeople)
             .OrderBy(f => f.DepartureTime);
 
@@ -56,17 +100,18 @@ public class FlightService : IFlightService
 
         if (dto.IsRoundTrip)
         {
-            if (!dto.ReturnDateFrom.HasValue || !dto.ReturnDateTo.HasValue)
-            {
-                throw new ArgumentException("ReturnDateFrom and ReturnDateTo are required for round-trip queries.");
-            }
+            var returnDateFrom = EnsureUtc(dto.ReturnDateFrom!.Value);
+            var returnDateTo = EnsureUtc(dto.ReturnDateTo!.Value);
 
             var returnBaseQuery = _context.Flights
                 .Where(f =>
-                    f.DepartureTime >= dto.ReturnDateFrom.Value &&
-                    f.DepartureTime <= dto.ReturnDateTo.Value &&
+                    f.DepartureTime >= returnDateFrom &&
+                    f.DepartureTime <= returnDateTo &&
                     f.AirportFrom == dto.AirportTo &&
                     f.AirportTo == dto.AirportFrom &&
+                    f.Status != FlightStatus.Cancelled &&
+                    f.Status != FlightStatus.Departed &&
+                    f.Status != FlightStatus.Arrived &&
                     f.AvailableSeats >= dto.NumberOfPeople)
                 .OrderBy(f => f.DepartureTime);
 
@@ -81,96 +126,144 @@ public class FlightService : IFlightService
     }
 
     public async Task<FlightPassengerListResponseDto> GetPassengerListAsync(
-    string flightNumber,
-    DateTime departureDate,
-    int page = 1,
-    int size = 10)
+        string flightNumber,
+        DateTime departureDate,
+        int page = 1,
+        int size = 10)
     {
+        var (dateStart, dateEnd) = GetUtcDateWindow(departureDate);
+
         var flight = await _context.Flights
             .FirstOrDefaultAsync(f =>
                 f.FlightNumber == flightNumber &&
-                f.DepartureTime.Date == departureDate.Date);
+                f.DepartureTime >= dateStart &&
+                f.DepartureTime < dateEnd);
 
         if (flight is null)
         {
-            throw new Exception("Flight not found.");
+            throw new InvalidOperationException("Flight not found.");
         }
 
-        if (page <= 0) page = 1;
-    if (size <= 0) size = 10;
+        NormalizePaging(ref page, ref size);
 
-    var baseQuery = _context.CheckIns
-    .Include(c => c.Ticket)
-    .Where(c => c.Ticket.FlightId == flight.Id)
-    .OrderBy(c => c.SeatNumber);
+        var baseQuery = _context.CheckIns
+            .Include(c => c.Ticket)
+            .Where(c => c.FlightId == flight.Id)
+            .OrderBy(c => c.SeatNumber);
 
-    var totalCount = await baseQuery.CountAsync();
+        var totalCount = await baseQuery.CountAsync();
 
-    var passengers = await baseQuery
-    .Skip((page - 1) * size)
-    .Take(size)
-    .Select(c => new PassengerListItemDto
-    {
-        PassengerName = c.Ticket.PassengerName,
-        SeatNumber = c.SeatNumber
-    })
-    .ToListAsync();
+        var passengers = await baseQuery
+            .Skip((page - 1) * size)
+            .Take(size)
+            .Select(c => new PassengerListItemDto
+            {
+                PassengerName = c.Ticket.PassengerName,
+                SeatNumber = c.SeatNumber
+            })
+            .ToListAsync();
 
         return new FlightPassengerListResponseDto
-{
-    FlightNumber = flight.FlightNumber,
-    DepartureTime = flight.DepartureTime,
-    Passengers = passengers,
-    Page = page,
-    Size = size,
-    TotalCount = totalCount,
-    TotalPages = (int)Math.Ceiling(totalCount / (double)size)
-};
-
+        {
+            FlightNumber = flight.FlightNumber,
+            DepartureTime = flight.DepartureTime,
+            Passengers = passengers,
+            Page = page,
+            Size = size,
+            TotalCount = totalCount,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)size)
+        };
     }
 
     public async Task<FlightUploadResponseDto> UploadFlightsAsync(Stream fileStream)
     {
         var response = new FlightUploadResponseDto();
+        var seenFlightKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         using var stream = new StreamReader(fileStream);
 
-        // Header satırını geç
         await stream.ReadLineAsync();
+        var lineNumber = 1;
 
         while (!stream.EndOfStream)
         {
+            lineNumber++;
             var line = await stream.ReadLineAsync();
 
             if (string.IsNullOrWhiteSpace(line))
-                continue;
-
-            var parts = line.Split(',');
-
-            if (parts.Length < 6)
-                continue;
-
-            var flightNumber = parts[0];
-
-            var exists = await _context.Flights
-                .AnyAsync(f => f.FlightNumber == flightNumber);
-
-            if (exists)
             {
-                response.SkippedCount++;
-                response.SkippedFlightNumbers.Add(flightNumber);
                 continue;
             }
 
-            var departureTime = DateTime.SpecifyKind(
-                DateTime.Parse(parts[1]),
-                DateTimeKind.Utc);
+            var parts = line.Split(',').Select(part => part.Trim()).ToArray();
 
-            var arrivalTime = DateTime.SpecifyKind(
-                DateTime.Parse(parts[2]),
-                DateTimeKind.Utc);
+            if (parts.Length != 7)
+            {
+                AddFailedRow(response, lineNumber, "Expected 7 columns.");
+                continue;
+            }
 
-            var capacity = int.Parse(parts[5]);
+            var flightNumber = parts[0];
+            if (string.IsNullOrWhiteSpace(flightNumber))
+            {
+                AddFailedRow(response, lineNumber, "Flight number is required.");
+                continue;
+            }
+
+            if (!DateTime.TryParse(parts[1], out var parsedDepartureTime))
+            {
+                AddFailedRow(response, lineNumber, "Departure time is invalid.");
+                continue;
+            }
+
+            if (!DateTime.TryParse(parts[2], out var parsedArrivalTime))
+            {
+                AddFailedRow(response, lineNumber, "Arrival time is invalid.");
+                continue;
+            }
+
+            var departureTime = EnsureUtc(parsedDepartureTime);
+            var arrivalTime = EnsureUtc(parsedArrivalTime);
+
+            if (arrivalTime <= departureTime)
+            {
+                AddFailedRow(response, lineNumber, "Arrival time must be after departure time.");
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(parts[3]) || string.IsNullOrWhiteSpace(parts[4]))
+            {
+                AddFailedRow(response, lineNumber, "Departure and arrival airports are required.");
+                continue;
+            }
+
+            if (!int.TryParse(parts[6], out var capacity) || capacity <= 0)
+            {
+                AddFailedRow(response, lineNumber, "Capacity must be greater than zero.");
+                continue;
+            }
+
+            int.TryParse(parts[5], out var duration);
+            if (duration <= 0)
+            {
+                duration = (int)(arrivalTime - departureTime).TotalMinutes;
+            }
+
+            var flightKey = $"{flightNumber}|{departureTime:O}";
+            if (!seenFlightKeys.Add(flightKey))
+            {
+                AddSkippedFlight(response, flightNumber, departureTime);
+                continue;
+            }
+
+            var exists = await _context.Flights
+                .AnyAsync(f => f.FlightNumber == flightNumber && f.DepartureTime == departureTime);
+
+            if (exists)
+            {
+                AddSkippedFlight(response, flightNumber, departureTime);
+                continue;
+            }
 
             var flight = new Flight
             {
@@ -181,7 +274,7 @@ public class FlightService : IFlightService
                 AirportTo = parts[4],
                 Capacity = capacity,
                 AvailableSeats = capacity,
-                DurationMinutes = (int)(arrivalTime - departureTime).TotalMinutes,
+                DurationMinutes = duration,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -199,8 +292,7 @@ public class FlightService : IFlightService
         int page,
         int size)
     {
-        if (page <= 0) page = 1;
-        if (size <= 0) size = 10;
+        NormalizePaging(ref page, ref size);
 
         var totalCount = await query.CountAsync();
 
@@ -227,5 +319,41 @@ public class FlightService : IFlightService
             TotalCount = totalCount,
             TotalPages = (int)Math.Ceiling(totalCount / (double)size)
         };
+    }
+
+    private static void NormalizePaging(ref int page, ref int size)
+    {
+        if (page <= 0) page = 1;
+        if (size <= 0) size = PageSizeLimit;
+        if (size > PageSizeLimit) size = PageSizeLimit;
+    }
+
+    private static void AddSkippedFlight(FlightUploadResponseDto response, string flightNumber, DateTime departureTime)
+    {
+        response.SkippedCount++;
+        response.SkippedFlightNumbers.Add($"{flightNumber} ({departureTime:O})");
+    }
+
+    private static void AddFailedRow(FlightUploadResponseDto response, int lineNumber, string reason)
+    {
+        response.FailedCount++;
+        response.FailedRows.Add($"Line {lineNumber}: {reason}");
+    }
+
+    private static DateTime EnsureUtc(DateTime value)
+    {
+        return value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
+    }
+
+    private static (DateTime Start, DateTime End) GetUtcDateWindow(DateTime value)
+    {
+        var utc = EnsureUtc(value);
+        var start = DateTime.SpecifyKind(utc.Date, DateTimeKind.Utc);
+        return (start, start.AddDays(1));
     }
 }

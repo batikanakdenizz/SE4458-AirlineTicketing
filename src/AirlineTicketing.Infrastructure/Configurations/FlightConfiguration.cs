@@ -8,7 +8,12 @@ public class FlightConfiguration : IEntityTypeConfiguration<Flight>
 {
     public void Configure(EntityTypeBuilder<Flight> builder)
     {
-        builder.ToTable("Flights");
+        builder.ToTable("Flights", table =>
+        {
+            table.HasCheckConstraint("CK_Flights_Capacity", "\"Capacity\" > 0");
+            table.HasCheckConstraint("CK_Flights_AvailableSeats", "\"AvailableSeats\" >= 0");
+            table.HasCheckConstraint("CK_Flights_AvailableSeats_Limit", "\"AvailableSeats\" <= \"Capacity\"");
+        });
 
         builder.HasKey(f => f.Id);
 
@@ -16,7 +21,7 @@ public class FlightConfiguration : IEntityTypeConfiguration<Flight>
             .IsRequired()
             .HasMaxLength(20);
 
-        builder.HasIndex(f => f.FlightNumber)
+        builder.HasIndex(f => new { f.FlightNumber, f.DepartureTime })
             .IsUnique();
 
         builder.Property(f => f.AirportFrom)
@@ -36,11 +41,11 @@ public class FlightConfiguration : IEntityTypeConfiguration<Flight>
         builder.Property(f => f.AvailableSeats)
             .IsRequired();
 
+        builder.Property(f => f.Status)
+            .IsRequired();
+
         builder.Property(f => f.CreatedAt)
             .IsRequired();
 
-        builder.HasCheckConstraint("CK_Flights_Capacity", "\"Capacity\" > 0");
-        builder.HasCheckConstraint("CK_Flights_AvailableSeats", "\"AvailableSeats\" >= 0");
-        builder.HasCheckConstraint("CK_Flights_AvailableSeats_Limit", "\"AvailableSeats\" <= \"Capacity\"");
     }
 }

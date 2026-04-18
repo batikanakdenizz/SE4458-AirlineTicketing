@@ -15,15 +15,26 @@ public class CheckInConfiguration : IEntityTypeConfiguration<CheckIn>
         builder.Property(c => c.SeatNumber)
             .IsRequired();
 
+        builder.Property(c => c.FlightId)
+            .IsRequired();
+
         builder.Property(c => c.CheckInTime)
             .IsRequired();
 
         builder.HasIndex(c => c.TicketId)
             .IsUnique();
 
+        builder.HasIndex(c => new { c.FlightId, c.SeatNumber })
+            .IsUnique();
+
         builder.HasOne(c => c.Ticket)
             .WithOne(t => t.CheckIn)
             .HasForeignKey<CheckIn>(c => c.TicketId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(c => c.Flight)
+            .WithMany()
+            .HasForeignKey(c => c.FlightId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

@@ -21,44 +21,69 @@ public class FlightController : ControllerBase
     [Authorize]
     public async Task<IActionResult> CreateFlight([FromBody] CreateFlightDto dto)
     {
-        var id = await _flightService.CreateFlightAsync(dto);
+        try
+        {
+            var id = await _flightService.CreateFlightAsync(dto);
 
-        return Ok(new { FlightId = id });
+            return Ok(new { FlightId = id });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpGet("query")]
     [AllowAnonymous]
     public async Task<IActionResult> QueryFlights([FromQuery] QueryFlightsRequestDto dto)
     {
-        var result = await _flightService.QueryFlightsAsync(dto);
-        return Ok(result);
+        try
+        {
+            var result = await _flightService.QueryFlightsAsync(dto);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
 
     [HttpGet("passengers")]
     [Authorize]
-public async Task<IActionResult> GetPassengerList(
-    [FromQuery] string flightNumber,
-    [FromQuery] DateTime departureDate,
-    [FromQuery] int page = 1,
-    [FromQuery] int size = 10)
-{
-    var result = await _flightService.GetPassengerListAsync(flightNumber, departureDate, page, size);
-    return Ok(result);
-}
+    public async Task<IActionResult> GetPassengerList(
+        [FromQuery] string flightNumber,
+        [FromQuery] DateTime departureDate,
+        [FromQuery] int page = 1,
+        [FromQuery] int size = 10)
+    {
+        try
+        {
+            var result = await _flightService.GetPassengerListAsync(flightNumber, departureDate, page, size);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
 
 
-[HttpPost("upload")]
-[Authorize]
-[Consumes("multipart/form-data")]
-public async Task<IActionResult> UploadFlights([FromForm] FlightUploadRequestDto request)
-{
-    if (request.File == null || request.File.Length == 0)
-        return BadRequest("File is required.");
+    [HttpPost("upload")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadFlights([FromForm] FlightUploadRequestDto request)
+    {
+        if (request.File == null || request.File.Length == 0)
+            return BadRequest("File is required.");
 
-    var result = await _flightService.UploadFlightsAsync(request.File.OpenReadStream());
+        var result = await _flightService.UploadFlightsAsync(request.File.OpenReadStream());
 
-    return Ok(result);
-}
+        return Ok(result);
+    }
 
 }

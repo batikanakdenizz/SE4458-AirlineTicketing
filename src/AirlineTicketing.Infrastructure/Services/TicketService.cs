@@ -26,10 +26,19 @@ public class TicketService : ITicketService
             };
         }
 
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
+        var (dateStart, dateEnd) = GetUtcDateWindow(dto.DepartureDate);
+
         var flight = await _context.Flights
+            .OrderBy(f => f.DepartureTime)
             .FirstOrDefaultAsync(f =>
                 f.FlightNumber == dto.FlightNumber &&
-                f.DepartureTime.Date == dto.DepartureDate.Date);
+                f.DepartureTime >= dateStart &&
+                f.DepartureTime < dateEnd &&
+                f.Status != FlightStatus.Cancelled &&
+                f.Status != FlightStatus.Departed &&
+                f.Status != FlightStatus.Arrived);
 
         if (flight is null)
         {
@@ -39,7 +48,12 @@ public class TicketService : ITicketService
             };
         }
 
-        if (flight.AvailableSeats < dto.PassengerNames.Count)
+        var updatedRows = await _context.Flights
+            .Where(f => f.Id == flight.Id && f.AvailableSeats >= dto.PassengerNames.Count)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(f => f.AvailableSeats, f => f.AvailableSeats - dto.PassengerNames.Count));
+
+        if (updatedRows == 0)
         {
             return new BuyTicketResponseDto
             {
@@ -66,9 +80,8 @@ public class TicketService : ITicketService
             ticketNumbers.Add(ticketNumber);
         }
 
-        flight.AvailableSeats -= dto.PassengerNames.Count;
-
         await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
 
         return new BuyTicketResponseDto
         {
@@ -80,5 +93,18 @@ public class TicketService : ITicketService
     private static string GenerateTicketNumber()
     {
         return $"TKT-{Guid.NewGuid().ToString("N")[..10].ToUpper()}";
+    }
+
+    private static (DateTime Start, DateTime End) GetUtcDateWindow(DateTime value)
+    {
+        var utc = value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
+
+        var start = DateTime.SpecifyKind(utc.Date, DateTimeKind.Utc);
+        return (start, start.AddDays(1));
     }
 }
