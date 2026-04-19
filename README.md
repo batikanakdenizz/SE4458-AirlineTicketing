@@ -1,156 +1,53 @@
-# SE4458 Airline Ticketing System
+# Service Oriented Airline Ticketing System
 
-Backend-only airline ticketing API built for the SE4458 Service-Oriented Architecture midterm project.
+SE4458 Midterm Project - Airline Company API
 
-The original academic requirements are preserved and extended with production-oriented airline backend concepts such as PNR-based bookings, passenger records, payment state, idempotent booking creation, flight lifecycle checks, database-level seat constraints, and health endpoints.
+## Overview
 
-Repository:
+This project is a backend-only REST API for an airline ticketing system. It uses .NET 8, ASP.NET Core Web API, Entity Framework Core, PostgreSQL on Supabase, JWT authentication, Swagger, and an Ocelot API Gateway.
 
-- https://github.com/batikanakdenizz/SE4458-AirlineTicketing
+The project follows a layered structure:
 
-## Table of Contents
+- API: controllers, Swagger, authentication middleware
+- Application: DTOs and service interfaces
+- Infrastructure: EF Core DbContext, PostgreSQL configuration, service implementations
+- Domain: core entities and enums
+- Gateway: Ocelot routing and rate limiting
 
-- [System Overview](#system-overview)
-- [Technology Stack](#technology-stack)
-- [Architecture](#architecture)
-- [Core Features](#core-features)
-- [API Surface](#api-surface)
-- [Authentication](#authentication)
-- [Business Rules](#business-rules)
-- [Data Model](#data-model)
-- [Error Handling](#error-handling)
-- [Local Development](#local-development)
-- [Database and Migrations](#database-and-migrations)
-- [API Gateway](#api-gateway)
-- [CSV Upload](#csv-upload)
-- [Load Testing](#load-testing)
-- [Deployment Notes](#deployment-notes)
-- [Validation Summary](#validation-summary)
+## Deployment
 
-## System Overview
+Backend API Swagger URL:
 
-The system exposes a REST API for a simplified airline ticketing workflow:
+- To be updated after final Azure deployment.
 
-- Add flights manually or by CSV upload.
-- Query available flights.
-- Buy tickets through the original assignment endpoint.
-- Create production-style bookings with PNR, passengers, tickets, and payment state.
-- Check in passengers and assign seats.
-- Query checked-in passengers for a flight.
-- Route selected API calls through an Ocelot API Gateway.
+API Gateway URL:
 
-The API is designed around correctness first: overbooking is prevented with atomic database updates, check-in seat duplication is prevented by a unique database constraint, and important runtime failures return structured JSON responses.
+- To be updated after final Azure deployment.
 
-## Technology Stack
+Before deploying the gateway, update `src/AirlineTicketing.Gateway/ocelot.json` so every `DownstreamHostAndPorts.Host` value points to the deployed backend API host.
 
-| Area | Technology |
-| --- | --- |
-| Runtime | .NET 8 |
-| API Framework | ASP.NET Core Web API |
-| Database | PostgreSQL on Supabase |
-| ORM | Entity Framework Core |
-| Authentication | JWT Bearer |
-| API Documentation | Swagger / OpenAPI |
-| API Gateway | Ocelot |
-| Load Testing | k6 |
-| Hosting Target | Azure App Service |
 
-## Architecture
+## API Endpoints
 
-The solution follows a layered architecture:
+| Requirement | Endpoint | Auth | Paging |
+| --- | --- | --- | --- |
+| Add Flight | `POST /api/v1/Flight` | Yes | No |
+| Add Flight by File | `POST /api/v1/Flight/upload` | Yes | No |
+| Query Flight | `GET /api/v1/Flight/query` | No | Yes, max size 10 |
+| Buy Ticket | `POST /api/v1/Ticket` | Yes | No |
+| Check-in | `POST /api/v1/CheckIn` | No | No |
+| Query Flight Passenger List | `GET /api/v1/Flight/passengers` | Yes | Yes, max size 10 |
+| Login | `POST /api/v1/Auth/login` | No | No |
+| Create Booking / PNR | `POST /api/v1/Bookings` | No | No |
+| Get Booking / PNR | `GET /api/v1/Bookings/{pnrCode}` | Yes | No |
+| Liveness Health Check | `GET /health/live` | No | No |
+| Readiness Health Check | `GET /health/ready` | No | No |
 
-```text
-AirlineTicketingSystem
-|-- src
-|   |-- AirlineTicketing.API
-|   |   |-- Controllers
-|   |   |-- Middleware
-|   |   `-- Program.cs
-|   |-- AirlineTicketing.Application
-|   |   |-- DTOs
-|   |   `-- Interfaces
-|   |-- AirlineTicketing.Domain
-|   |   |-- Entities
-|   |   `-- Enums
-|   |-- AirlineTicketing.Infrastructure
-|   |   |-- Configurations
-|   |   |-- Data
-|   |   |-- Migrations
-|   |   `-- Services
-|   `-- AirlineTicketing.Gateway
-|       `-- ocelot.json
-|-- doc
-|   `-- midterm
-`-- loadtests
-```
+The original academic endpoints are preserved. The booking endpoints extend the project toward a more realistic airline backend with PNR, passenger, ticket, payment, and idempotency support.
 
-Layer responsibilities:
+### Production-oriented booking request
 
-| Layer | Responsibility |
-| --- | --- |
-| API | HTTP controllers, Swagger, authentication pipeline, global exception handling |
-| Application | DTOs and service contracts |
-| Domain | Entities and domain enums |
-| Infrastructure | EF Core DbContext, persistence configuration, migrations, service implementations |
-| Gateway | Ocelot routing and rate limiting |
-
-## Core Features
-
-Assignment-compatible features:
-
-- Add Flight
-- Add Flight by File
-- Query Flight
-- Buy Ticket
-- Check-in
-- Query Flight Passenger List
-- JWT Login
-- API Gateway routing
-- Rate limiting
-- k6 load testing scripts
-
-Production-oriented extensions:
-
-- PNR-based booking flow.
-- Passenger records linked to bookings and tickets.
-- Demo payment state linked to each booking.
-- Idempotent booking creation with `Idempotency-Key`.
-- Atomic seat capacity decrement for booking and ticket purchase.
-- Transactional check-in and deterministic seat assignment.
-- Database-level unique seat constraint per flight.
-- Flight lifecycle status.
-- Structured error responses.
-- Liveness and readiness health checks.
-
-## API Surface
-
-### Backend API
-
-| Feature | Method | Endpoint | Auth | Notes |
-| --- | --- | --- | --- | --- |
-| Login | POST | `/api/v1/Auth/login` | No | Returns JWT token |
-| Add Flight | POST | `/api/v1/Flight` | Yes | Creates one flight |
-| Add Flight by CSV | POST | `/api/v1/Flight/upload` | Yes | Uploads multiple flights |
-| Query Flight | GET | `/api/v1/Flight/query` | No | Paging max size is 10 |
-| Buy Ticket | POST | `/api/v1/Ticket` | Yes | Legacy assignment flow |
-| Check-in | POST | `/api/v1/CheckIn` | No | Assigns seat number |
-| Passenger List | GET | `/api/v1/Flight/passengers` | Yes | Paging max size is 10 |
-| Create Booking | POST | `/api/v1/Bookings` | No | Production-style PNR flow |
-| Get Booking | GET | `/api/v1/Bookings/{pnrCode}` | Yes | Fetches booking details |
-| Liveness | GET | `/health/live` | No | Process health |
-| Readiness | GET | `/health/ready` | No | Database and migration readiness |
-
-### Create Booking Example
-
-`POST /api/v1/Bookings`
-
-Optional header:
-
-```http
-Idempotency-Key: booking-request-001
-```
-
-Request:
+`POST /api/v1/Bookings` supports the optional `Idempotency-Key` header. Repeating the same key returns the existing booking instead of creating duplicate tickets or consuming extra seats.
 
 ```json
 {
@@ -172,325 +69,26 @@ Request:
 }
 ```
 
-Response:
-
-```json
-{
-  "pnrCode": "A7150D",
-  "status": "Ticketed",
-  "flightNumber": "TK100",
-  "departureTime": "2026-06-10T08:00:00Z",
-  "totalAmount": 2500,
-  "currency": "TRY",
-  "paymentStatus": "Captured",
-  "passengers": [
-    {
-      "passengerId": 1,
-      "firstName": "Ada",
-      "lastName": "Yilmaz"
-    }
-  ],
-  "tickets": [
-    {
-      "ticketNumber": "TKT-1234567890",
-      "passengerName": "Ada Yilmaz",
-      "status": "Issued"
-    }
-  ]
-}
-```
-
-### Query Flight Parameters
-
-| Parameter | Required | Description |
-| --- | --- | --- |
-| `airportFrom` | Yes | Departure airport |
-| `airportTo` | Yes | Arrival airport |
-| `departureDateFrom` | Yes | Start of departure date range |
-| `departureDateTo` | Yes | End of departure date range |
-| `numberOfPeople` | Yes | Required available seats |
-| `isRoundTrip` | Yes | Enables return-flight search |
-| `returnDateFrom` | Required for round trip | Return date range start |
-| `returnDateTo` | Required for round trip | Return date range end |
-| `page` | No | Defaults to 1 when invalid |
-| `size` | No | Defaults to 10 and is capped at 10 |
-
 ## Authentication
 
-JWT Bearer authentication is used for protected endpoints.
+JWT authentication is used for protected endpoints.
 
-Default seeded demo user:
+Default seeded user for local/demo testing:
 
-| Field | Value |
-| --- | --- |
-| Username | `admin` |
-| Password | `admin123` |
+- Username: `admin`
+- Password: `admin123`
 
-Protected requests require:
+Protected endpoints require:
 
 ```http
 Authorization: Bearer <token>
 ```
 
-## Business Rules
-
-Flight rules:
-
-- A flight is uniquely identified by `FlightNumber + DepartureTime`.
-- The same flight number can be reused on different dates.
-- Arrival time must be after departure time.
-- Capacity must be greater than zero.
-- Available seats cannot be negative or greater than capacity.
-- Cancelled, departed, and arrived flights are not available for query, booking, ticket purchase, or check-in.
-
-Booking and ticket rules:
-
-- A booking creates one PNR.
-- A booking can contain at most 9 passengers.
-- A booking creates one ticket per passenger.
-- Booking creation is idempotent when `Idempotency-Key` is provided.
-- Capacity is decremented atomically in the database.
-- If capacity is insufficient, the API returns `Sold out or insufficient seats.`
-- The legacy `Buy Ticket` endpoint is preserved for assignment compatibility.
-
-Check-in rules:
-
-- One ticket can be checked in only once.
-- Seats are assigned sequentially per flight.
-- The database enforces unique `FlightId + SeatNumber`.
-- Parallel check-in requests cannot assign the same seat on the same flight.
-
-Paging rules:
-
-- `page <= 0` is normalized to `1`.
-- `size <= 0` is normalized to `10`.
-- `size > 10` is capped to `10`.
-
-CSV rules:
-
-- The expected CSV format has exactly 7 columns.
-- Duplicate detection uses `FlightNumber + DepartureTime`.
-- Invalid rows are reported in the response instead of being silently ignored.
-
-## Data Model
-
-Core entities:
-
-- `Flight`
-- `Booking`
-- `Passenger`
-- `Ticket`
-- `Payment`
-- `CheckIn`
-- `User`
-
-Important constraints:
-
-| Table | Constraint |
-| --- | --- |
-| Flights | Unique `FlightNumber + DepartureTime` |
-| Flights | `Capacity > 0` |
-| Flights | `AvailableSeats >= 0` |
-| Flights | `AvailableSeats <= Capacity` |
-| Bookings | Unique `PnrCode` |
-| Bookings | Unique nullable `IdempotencyKey` |
-| Tickets | Unique `TicketNumber` |
-| Payments | Unique `ProviderReference` |
-| Payments | Unique `BookingId` |
-| CheckIns | Unique `TicketId` |
-| CheckIns | Unique `FlightId + SeatNumber` |
-| Users | Unique `Username` |
-
-```mermaid
-erDiagram
-    FLIGHT ||--o{ BOOKING : has
-    FLIGHT ||--o{ TICKET : has
-    FLIGHT ||--o{ CHECKIN : assigns_seats_for
-    BOOKING ||--o{ PASSENGER : contains
-    BOOKING ||--o{ TICKET : issues
-    BOOKING ||--|| PAYMENT : paid_by
-    PASSENGER ||--o| TICKET : receives
-    TICKET ||--o| CHECKIN : generates
-
-    FLIGHT {
-        int Id PK
-        string FlightNumber
-        datetime DepartureTime
-        datetime ArrivalTime
-        string AirportFrom
-        string AirportTo
-        int DurationMinutes
-        int Capacity
-        int AvailableSeats
-        int Status
-        datetime CreatedAt
-    }
-
-    BOOKING {
-        int Id PK
-        string PnrCode UK
-        int FlightId FK
-        string IdempotencyKey UK
-        string ContactEmail
-        string ContactPhone
-        int Status
-        decimal TotalAmount
-        string Currency
-        datetime ExpiresAt
-        datetime CreatedAt
-        datetime ConfirmedAt
-    }
-
-    PASSENGER {
-        int Id PK
-        int BookingId FK
-        string FirstName
-        string LastName
-        datetime DateOfBirth
-        string DocumentNumber
-        string Nationality
-    }
-
-    TICKET {
-        int Id PK
-        string TicketNumber UK
-        int FlightId FK
-        int BookingId FK
-        int PassengerId FK
-        string PassengerName
-        datetime PurchaseDate
-        int Status
-    }
-
-    PAYMENT {
-        int Id PK
-        int BookingId FK_UK
-        string Provider
-        string ProviderReference UK
-        decimal Amount
-        string Currency
-        int Status
-        datetime CreatedAt
-        datetime CapturedAt
-    }
-
-    CHECKIN {
-        int Id PK
-        int TicketId FK_UK
-        int FlightId FK
-        int SeatNumber
-        datetime CheckInTime
-    }
-
-    USER {
-        int Id PK
-        string Username UK
-        string PasswordHash
-        string Role
-    }
-```
-
-## Error Handling
-
-Unhandled service exceptions are converted to structured JSON responses.
-
-Example:
-
-```json
-{
-  "error": {
-    "code": "BUSINESS_RULE_VIOLATION",
-    "message": "Sold out or insufficient seats."
-  },
-  "metadata": {
-    "requestId": "0HNKTIQS7MLFP:00000001",
-    "timestamp": "2026-04-18T22:09:05.8171154Z"
-  }
-}
-```
-
-Status mapping:
-
-| Exception / Case | HTTP Status |
-| --- | --- |
-| Validation failure | 400 |
-| Missing protected token | 401 |
-| Resource not found | 404 |
-| Business rule violation | 409 |
-| Unexpected server error | 500 |
-
-Some assignment-preserving legacy controller responses still return the original `{ "message": "..." }` or status DTO shape where required by the existing flow.
-
-## Local Development
-
-Prerequisites:
-
-- .NET 8 SDK
-- PostgreSQL-compatible connection string
-- Optional: k6 for load tests
-
-Build:
-
-```powershell
-dotnet build AirlineTicketingSystem.sln /m:1 -v minimal
-```
-
-Run backend API:
-
-```powershell
-dotnet run --project src\AirlineTicketing.API\AirlineTicketing.API.csproj --urls http://localhost:5005
-```
-
-Swagger UI:
-
-```text
-http://localhost:5005
-```
-
-Run gateway:
-
-```powershell
-dotnet run --project src\AirlineTicketing.Gateway\AirlineTicketing.Gateway.csproj --urls http://localhost:5010
-```
-
-Gateway base URL:
-
-```text
-http://localhost:5010
-```
-
-## Database and Migrations
-
-Database provider:
-
-- PostgreSQL on Supabase.
-
-The API applies pending EF Core migrations at startup.
-
-Current migration highlights:
-
-- Replaces single-column flight-number uniqueness with `FlightNumber + DepartureTime`.
-- Adds direct `CheckIns.FlightId`.
-- Adds unique `FlightId + SeatNumber` for seat safety.
-- Adds `Flights.Status`.
-- Adds `Bookings`, `Passengers`, and `Payments`.
-- Adds nullable booking/passenger references to tickets.
-
-Manual migration command:
-
-```powershell
-dotnet ef database update --project src\AirlineTicketing.Infrastructure\AirlineTicketing.Infrastructure.csproj --startup-project src\AirlineTicketing.API\AirlineTicketing.API.csproj --context AppDbContext
-```
-
-Create a new migration:
-
-```powershell
-dotnet ef migrations add <MigrationName> --project src\AirlineTicketing.Infrastructure\AirlineTicketing.Infrastructure.csproj --startup-project src\AirlineTicketing.API\AirlineTicketing.API.csproj --context AppDbContext
-```
-
 ## API Gateway
 
-Ocelot routes `/gateway/*` paths to backend API routes.
+Ocelot routes gateway paths under `/gateway/*` to backend `/api/v1/*` routes.
+
+Example routes:
 
 | Gateway Path | Backend Path |
 | --- | --- |
@@ -506,71 +104,227 @@ Ocelot routes `/gateway/*` paths to backend API routes.
 | `GET /gateway/health/live` | `GET /health/live` |
 | `GET /gateway/health/ready` | `GET /health/ready` |
 
-Rate limiting is configured for flight query traffic:
+Rate limiting is configured on `GET /gateway/flights/query`.
 
-| Setting | Value |
-| --- | --- |
-| Route | `GET /gateway/flights/query` |
-| Header | `Client` |
-| Limit | `3` |
-| Period | `1m` |
+- Demo setting: 3 requests per minute
+- Required client id header: `Client`
+- This was intentionally kept short for Swagger/demo verification. For a production interpretation of the assignment, change the period to one day.
 
-The `3/min` rate limit is intentionally kept low for demo and Swagger verification. In a real production deployment, this would be adjusted based on API usage policy.
+## Data Model
 
-Before deployment, update `src/AirlineTicketing.Gateway/ocelot.json` so every downstream host points to the deployed backend API host.
+Core entities:
 
-## CSV Upload
+- Flight
+- Ticket
+- CheckIn
+- Booking
+- Passenger
+- Payment
+- User
 
-Endpoint:
+Relationships:
 
-```http
-POST /api/v1/Flight/upload
+- One Flight has many Tickets.
+- One Ticket belongs to one Flight.
+- One Ticket can have one CheckIn.
+- One CheckIn belongs to one Ticket and one Flight.
+- One Flight has many Bookings.
+- One Booking belongs to one Flight.
+- One Booking has many Passengers.
+- One Booking has many Tickets.
+- One Booking has one Payment.
+- One Passenger can be linked to one Ticket inside the booking.
+- Users are used for authentication.
+
+Important constraints:
+
+- `FlightNumber + DepartureTime` is unique.
+- `TicketNumber` is unique.
+- `Username` is unique.
+- `PnrCode` is unique.
+- `IdempotencyKey` is unique when provided.
+- `Payment.ProviderReference` is unique.
+- A single booking can contain at most 9 passengers.
+- `TicketId` is unique in `CheckIns`, so one ticket can only be checked in once.
+- `FlightId + SeatNumber` is unique in `CheckIns`, so the same seat cannot be assigned twice on the same flight.
+- `AvailableSeats` cannot be negative and cannot exceed `Capacity`.
+- Cancelled, departed, and arrived flights are excluded from query, ticket purchase, booking, and check-in flows.
+
+Mermaid ER diagram:
+
+```mermaid
+erDiagram
+    FLIGHT ||--o{ TICKET : has
+    TICKET ||--o| CHECKIN : generates
+    FLIGHT ||--o{ CHECKIN : assigns_seats_for
+    FLIGHT ||--o{ BOOKING : has
+    BOOKING ||--o{ PASSENGER : contains
+    BOOKING ||--o{ TICKET : issues
+    BOOKING ||--|| PAYMENT : paid_by
+    PASSENGER ||--o| TICKET : receives
+
+    FLIGHT {
+        int Id PK
+        string FlightNumber
+        datetime DepartureTime
+        datetime ArrivalTime
+        string AirportFrom
+        string AirportTo
+        int DurationMinutes
+        int Capacity
+        int AvailableSeats
+        int Status
+        datetime CreatedAt
+    }
+
+    TICKET {
+        int Id PK
+        string TicketNumber UK
+        int FlightId FK
+        int BookingId FK
+        int PassengerId FK
+        string PassengerName
+        datetime PurchaseDate
+        int Status
+    }
+
+    CHECKIN {
+        int Id PK
+        int TicketId FK_UK
+        int FlightId FK
+        int SeatNumber
+        datetime CheckInTime
+    }
+
+    BOOKING {
+        int Id PK
+        string PnrCode UK
+        int FlightId FK
+        string IdempotencyKey UK
+        string ContactEmail
+        int Status
+        decimal TotalAmount
+        string Currency
+        datetime CreatedAt
+        datetime ConfirmedAt
+    }
+
+    PASSENGER {
+        int Id PK
+        int BookingId FK
+        string FirstName
+        string LastName
+        datetime DateOfBirth
+        string DocumentNumber
+        string Nationality
+    }
+
+    PAYMENT {
+        int Id PK
+        int BookingId FK_UK
+        string Provider
+        string ProviderReference UK
+        decimal Amount
+        string Currency
+        int Status
+    }
+
+    USER {
+        int Id PK
+        string Username UK
+        string PasswordHash
+        string Role
+    }
 ```
 
-Expected format:
+## Assumptions
+
+- A flight is uniquely identified by `FlightNumber + DepartureTime`.
+- Buy Ticket and Check-in receive `FlightNumber + Date`; if multiple flights with the same number exist on the same day, the earliest matching flight is used.
+- The legacy Buy Ticket endpoint is preserved for the assignment. The production-oriented path is Create Booking, which creates a PNR, passengers, issued tickets, and a demo captured payment in one transaction.
+- Seat assignment is sequential per flight.
+- Query Flight excludes flights whose available seats are less than the requested number of people.
+- Query paging is clamped to a maximum page size of 10.
+- The gateway query rate limit is intentionally set to 3 requests per minute for demo purposes.
+
+## Production-grade Extensions
+
+- Booking lifecycle: PNR creation, ticketed booking status, passenger records, and payment status.
+- Overbooking prevention: ticket purchase and booking both decrement capacity atomically in the database.
+- Idempotency: `Idempotency-Key` prevents duplicate booking creation during client retries.
+- Check-in consistency: seat assignment runs in a transaction and the database enforces unique seat numbers per flight.
+- Flight lifecycle: flight status prevents selling or checking in cancelled, departed, or arrived flights.
+- Health checks: liveness verifies application process health, readiness verifies database connectivity and migration state.
+- Error handling: unhandled service exceptions are returned as consistent JSON error envelopes with request metadata.
+
+## Local Run
+
+Build the solution:
+
+```powershell
+dotnet build AirlineTicketingSystem.sln /m:1 -v minimal
+```
+
+Run the backend API:
+
+```powershell
+dotnet run --project src\AirlineTicketing.API\AirlineTicketing.API.csproj --urls http://localhost:5005
+```
+
+Swagger:
+
+```text
+http://localhost:5005
+```
+
+Run the gateway:
+
+```powershell
+dotnet run --project src\AirlineTicketing.Gateway\AirlineTicketing.Gateway.csproj --urls http://localhost:5010
+```
+
+## CSV Upload Format
+
+The upload endpoint expects a CSV file with this header/order:
 
 ```csv
 FlightNumber,DepartureTime,ArrivalTime,AirportFrom,AirportTo,DurationMinutes,Capacity
 TK100,2026-06-10T08:00:00Z,2026-06-10T10:00:00Z,ADB,IST,120,180
 ```
 
-Response includes:
-
-- Created row count.
-- Skipped duplicate flights.
-- Failed row count.
-- Failed row details.
+The upload response includes created, skipped, and failed row counts. Invalid rows are reported instead of being silently ignored.
 
 ## Load Testing
 
-k6 scripts are located under `loadtests/`.
+k6 scripts are included under `loadtests/`.
 
-Environment variables:
+Tested endpoints:
 
-| Variable | Description | Default |
-| --- | --- | --- |
-| `BASE_URL` | API base URL | `http://localhost:5005` |
-| `VUS` | Virtual users | Script-specific |
-| `DURATION` | Test duration | Script-specific |
-| `TOKEN` | JWT for protected requests | Required for ticket test |
-| `FLIGHT_NUMBER` | Flight number used by ticket test | Required for ticket test |
-| `DEPARTURE_DATE` | Departure date used by ticket test | Required for ticket test |
+- Query Flight
+- Buy Ticket
 
-Query load test:
+Required scenarios:
 
-```powershell
-k6 run -e BASE_URL=http://localhost:5005 -e VUS=20 -e DURATION=30s loadtests\query-loadtest.js
-k6 run -e BASE_URL=http://localhost:5005 -e VUS=50 -e DURATION=30s loadtests\query-loadtest.js
-k6 run -e BASE_URL=http://localhost:5005 -e VUS=100 -e DURATION=30s loadtests\query-loadtest.js
-```
+- Normal Load: 20 virtual users
+- Peak Load: 50 virtual users
+- Stress Load: 100 virtual users
+- Duration: at least 30 seconds per scenario
 
-Ticket load test:
+Example commands:
 
 ```powershell
-k6 run -e BASE_URL=http://localhost:5005 -e VUS=20 -e DURATION=30s -e TOKEN=<jwt> -e FLIGHT_NUMBER=<flight> -e DEPARTURE_DATE=2026-06-10T00:00:00Z loadtests\ticket-loadtest.js
+k6 run -e VUS=20 -e DURATION=30s loadtests\query-loadtest.js
+k6 run -e VUS=50 -e DURATION=30s loadtests\query-loadtest.js
+k6 run -e VUS=100 -e DURATION=30s loadtests\query-loadtest.js
 ```
 
-Previous local load test summary:
+For ticket load tests, provide a valid JWT and a flight with enough capacity:
+
+```powershell
+k6 run -e VUS=20 -e DURATION=30s -e TOKEN=<jwt> -e FLIGHT_NUMBER=<flight> -e DEPARTURE_DATE=2026-06-10T00:00:00Z loadtests\ticket-loadtest.js
+```
+
+Previous load test summary:
 
 | Test | VUs | Avg ms | p95 ms | RPS | Error |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -581,62 +335,10 @@ Previous local load test summary:
 | Buy Ticket | 50 | 67.1 | 209.9 | 743.8 | 0% |
 | Buy Ticket | 100 | 147.7 | 450.2 | 674.5 | 0% |
 
-After final deployment, rerun k6 tests against the deployed backend or gateway URL and update this section with fresh results.
+After final deployment, rerun the scripts against the deployed backend or gateway URLs and update this section with fresh screenshots or k6 output.
 
-## Deployment Notes
+## Notes
 
-Backend API Swagger URL:
-
-- To be updated after final Azure deployment.
-
-API Gateway URL:
-
-- To be updated after final Azure deployment.
-
-Deployment checklist:
-
-- Verify `DefaultConnection` points to the Supabase pooler connection string.
-- Verify JWT settings exist.
-- Deploy backend API first.
-- Confirm backend `/health/ready` returns healthy.
-- Update gateway downstream host to the deployed backend host.
-- Deploy gateway.
-- Verify login, query flight, protected passenger list, booking, and health routes through the gateway.
-- Rerun k6 scripts against the deployed URL.
-
-Notes:
-
-- The Supabase pooler connection string is used because direct database hosts can require IPv6 support.
+- Database: PostgreSQL on Supabase.
+- The Supabase pooler connection string is used because the direct database host can require IPv6.
 - Secrets are kept in `appsettings.json` for this course project.
-- `doc/midterm` is intentionally kept in the repository as the assignment source of truth.
-
-## Validation Summary
-
-Latest local validation before deployment:
-
-| Check | Result |
-| --- | --- |
-| Solution build | Passed |
-| API startup | Passed |
-| EF migrations against Supabase | Applied successfully |
-| Swagger JSON | HTTP 200 |
-| Login | HTTP 200 |
-| Add Flight | HTTP 200 |
-| Duplicate same flight/time | HTTP 400 |
-| Query Flight page size cap | Enforced at 10 |
-| Round-trip missing return dates | HTTP 400 |
-| Create Booking / PNR | HTTP 200 |
-| Booking idempotency retry | Same PNR returned |
-| Get Booking with JWT | HTTP 200 |
-| Invalid booking without passengers | HTTP 400 |
-| Legacy Buy Ticket | HTTP 200 |
-| Sold-out scenario | Correct rejection |
-| Check-in | HTTP 200 |
-| Passenger List page size cap | Enforced at 10 |
-| Passenger List without JWT | HTTP 401 |
-| Parallel booking capacity test | No overbooking |
-| Gateway startup | Passed |
-
-Build note:
-
-- `NU1900` warnings can appear when the NuGet vulnerability feed is unavailable. These warnings did not block compilation.
