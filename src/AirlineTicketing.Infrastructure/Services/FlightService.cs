@@ -287,6 +287,88 @@ public class FlightService : IFlightService
         return response;
     }
 
+    public async Task<FlightDetailsResponseDto?> GetFlightDetailsAsync(string flightNumber, DateTime departureDate)
+    {
+        var flight = await FindFlightByDateAsync(flightNumber, departureDate);
+        return flight is null ? null : await ToFlightDetailsAsync(flight);
+    }
+
+    public async Task<FlightDetailsResponseDto> UpdateFlightStatusAsync(
+        string flightNumber,
+        DateTime departureDate,
+        UpdateFlightStatusRequestDto dto)
+    {
+        if (!Enum.TryParse<FlightStatus>(dto.Status, true, out var requestedStatus))
+        {
+            throw new ArgumentException("Invalid flight status.");
+        }
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
+        var flight = await FindFlightByDateAsync(flightNumber, departureDate, includeBookings: true);
+        if (flight is null)
+        {
+            throw new KeyNotFoundException("Flight not found.");
+        }
+
+        ValidateFlightStatusTransition(flight.Status, requestedStatus);
+        flight.Status = requestedStatus;
+
+        if (requestedStatus == FlightStatus.Cancelled)
+        {
+            await CancelFlightBookingsAsync(flight);
+        }
+
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        return await ToFlightDetailsAsync(flight);
+    }
+
+    public async Task<FlightDetailsResponseDto> DelayFlightAsync(
+        string flightNumber,
+        DateTime departureDate,
+        DelayFlightRequestDto dto)
+    {
+        var newDepartureTime = EnsureUtc(dto.NewDepartureTime);
+        var newArrivalTime = EnsureUtc(dto.NewArrivalTime);
+
+        if (newArrivalTime <= newDepartureTime)
+        {
+            throw new ArgumentException("New arrival time must be after new departure time.");
+        }
+
+        var flight = await FindFlightByDateAsync(flightNumber, departureDate);
+        if (flight is null)
+        {
+            throw new KeyNotFoundException("Flight not found.");
+        }
+
+        if (flight.Status is FlightStatus.Cancelled or FlightStatus.Departed or FlightStatus.Arrived)
+        {
+            throw new InvalidOperationException("Only active scheduled flights can be delayed.");
+        }
+
+        var duplicateExists = await _context.Flights.AnyAsync(f =>
+            f.Id != flight.Id &&
+            f.FlightNumber == flight.FlightNumber &&
+            f.DepartureTime == newDepartureTime);
+
+        if (duplicateExists)
+        {
+            throw new InvalidOperationException("A flight with the same flight number and new departure time already exists.");
+        }
+
+        flight.DepartureTime = newDepartureTime;
+        flight.ArrivalTime = newArrivalTime;
+        flight.DurationMinutes = (int)(newArrivalTime - newDepartureTime).TotalMinutes;
+        flight.Status = FlightStatus.Delayed;
+
+        await _context.SaveChangesAsync();
+
+        return await ToFlightDetailsAsync(flight);
+    }
+
     private static async Task<PagedResultDto<FlightQueryItemDto>> ToPagedFlightResultAsync(
         IQueryable<Flight> query,
         int page,
@@ -338,6 +420,135 @@ public class FlightService : IFlightService
     {
         response.FailedCount++;
         response.FailedRows.Add($"Line {lineNumber}: {reason}");
+    }
+
+    private async Task<Flight?> FindFlightByDateAsync(
+        string flightNumber,
+        DateTime departureDate,
+        bool includeBookings = false)
+    {
+        if (string.IsNullOrWhiteSpace(flightNumber))
+        {
+            throw new ArgumentException("Flight number is required.");
+        }
+
+        var (dateStart, dateEnd) = GetUtcDateWindow(departureDate);
+
+        var query = _context.Flights.AsQueryable();
+
+        if (includeBookings)
+        {
+            query = query
+                .Include(f => f.Bookings)
+                .ThenInclude(b => b.Payment)
+                .Include(f => f.Bookings)
+                .ThenInclude(b => b.Tickets);
+        }
+
+        return await query
+            .OrderBy(f => f.DepartureTime)
+            .FirstOrDefaultAsync(f =>
+                f.FlightNumber == flightNumber.Trim() &&
+                f.DepartureTime >= dateStart &&
+                f.DepartureTime < dateEnd);
+    }
+
+    private async Task<FlightDetailsResponseDto> ToFlightDetailsAsync(Flight flight)
+    {
+        var ticketStats = await _context.Tickets
+            .Where(t => t.FlightId == flight.Id)
+            .GroupBy(t => 1)
+            .Select(g => new
+            {
+                BookedSeats = g.Count(t => t.Status != TicketStatus.Cancelled && t.Status != TicketStatus.Refunded),
+                BoardedPassengers = g.Count(t => t.Status == TicketStatus.Boarded)
+            })
+            .FirstOrDefaultAsync();
+
+        var checkedInPassengers = await _context.CheckIns.CountAsync(c => c.FlightId == flight.Id);
+
+        return new FlightDetailsResponseDto
+        {
+            FlightNumber = flight.FlightNumber,
+            DepartureTime = flight.DepartureTime,
+            ArrivalTime = flight.ArrivalTime,
+            AirportFrom = flight.AirportFrom,
+            AirportTo = flight.AirportTo,
+            DurationMinutes = flight.DurationMinutes,
+            Capacity = flight.Capacity,
+            AvailableSeats = flight.AvailableSeats,
+            BookedSeats = ticketStats?.BookedSeats ?? 0,
+            CheckedInPassengers = checkedInPassengers,
+            BoardedPassengers = ticketStats?.BoardedPassengers ?? 0,
+            Status = flight.Status.ToString()
+        };
+    }
+
+    private static void ValidateFlightStatusTransition(FlightStatus currentStatus, FlightStatus requestedStatus)
+    {
+        if (currentStatus == requestedStatus)
+        {
+            return;
+        }
+
+        if (currentStatus == FlightStatus.Arrived)
+        {
+            throw new InvalidOperationException("Arrived flights cannot move to another status.");
+        }
+
+        if (currentStatus == FlightStatus.Cancelled && requestedStatus != FlightStatus.Scheduled)
+        {
+            throw new InvalidOperationException("Cancelled flights can only be reopened as Scheduled.");
+        }
+
+        if (currentStatus == FlightStatus.Departed &&
+            requestedStatus is FlightStatus.Scheduled or FlightStatus.Delayed or FlightStatus.Boarding)
+        {
+            throw new InvalidOperationException("Departed flights cannot move back to pre-departure statuses.");
+        }
+    }
+
+    private async Task CancelFlightBookingsAsync(Flight flight)
+    {
+        await _context.Database.ExecuteSqlInterpolatedAsync(
+            $"""SELECT "Id" FROM "Flights" WHERE "Id" = {flight.Id} FOR UPDATE""");
+
+        foreach (var booking in flight.Bookings)
+        {
+            if (booking.Status is BookingStatus.Cancelled or BookingStatus.Refunded)
+            {
+                continue;
+            }
+
+            booking.Status = BookingStatus.Refunded;
+
+            if (booking.Payment is not null)
+            {
+                booking.Payment.Status = PaymentStatus.Refunded;
+            }
+
+            foreach (var ticket in booking.Tickets)
+            {
+                if (ticket.Status is not TicketStatus.Cancelled and not TicketStatus.Refunded and not TicketStatus.Flown)
+                {
+                    ticket.Status = TicketStatus.Refunded;
+                }
+            }
+        }
+
+        var legacyTickets = await _context.Tickets
+            .Where(t => t.FlightId == flight.Id && t.BookingId == null)
+            .ToListAsync();
+
+        foreach (var ticket in legacyTickets)
+        {
+            if (ticket.Status is not TicketStatus.Cancelled and not TicketStatus.Refunded and not TicketStatus.Flown)
+            {
+                ticket.Status = TicketStatus.Refunded;
+            }
+        }
+
+        flight.AvailableSeats = flight.Capacity;
     }
 
     private static DateTime EnsureUtc(DateTime value)

@@ -12,4 +12,7 @@ public interface IFlightService
         int page = 1,
         int size = 10);
     Task<FlightUploadResponseDto> UploadFlightsAsync(Stream fileStream);
+    Task<FlightDetailsResponseDto?> GetFlightDetailsAsync(string flightNumber, DateTime departureDate);
+    Task<FlightDetailsResponseDto> UpdateFlightStatusAsync(string flightNumber, DateTime departureDate, UpdateFlightStatusRequestDto dto);
+    Task<FlightDetailsResponseDto> DelayFlightAsync(string flightNumber, DateTime departureDate, DelayFlightRequestDto dto);
 }

@@ -86,4 +86,36 @@ public class FlightController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("{flightNumber}")]
+    [Authorize]
+    public async Task<IActionResult> GetFlightDetails(
+        [FromRoute] string flightNumber,
+        [FromQuery] DateTime departureDate)
+    {
+        var result = await _flightService.GetFlightDetailsAsync(flightNumber, departureDate);
+        return result is null ? NotFound(new { message = "Flight not found." }) : Ok(result);
+    }
+
+    [HttpPatch("{flightNumber}/status")]
+    [Authorize]
+    public async Task<IActionResult> UpdateFlightStatus(
+        [FromRoute] string flightNumber,
+        [FromQuery] DateTime departureDate,
+        [FromBody] UpdateFlightStatusRequestDto request)
+    {
+        var result = await _flightService.UpdateFlightStatusAsync(flightNumber, departureDate, request);
+        return Ok(result);
+    }
+
+    [HttpPatch("{flightNumber}/delay")]
+    [Authorize]
+    public async Task<IActionResult> DelayFlight(
+        [FromRoute] string flightNumber,
+        [FromQuery] DateTime departureDate,
+        [FromBody] DelayFlightRequestDto request)
+    {
+        var result = await _flightService.DelayFlightAsync(flightNumber, departureDate, request);
+        return Ok(result);
+    }
+
 }

@@ -77,6 +77,48 @@
       ]
     },
     {
+      "DownstreamPathTemplate": "/api/v1/Flight/{flightNumber}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/flights/{flightNumber}",
+      "UpstreamHttpMethod": [
+        "GET"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/v1/Flight/{flightNumber}/status",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/flights/{flightNumber}/status",
+      "UpstreamHttpMethod": [
+        "PATCH"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/v1/Flight/{flightNumber}/delay",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/flights/{flightNumber}/delay",
+      "UpstreamHttpMethod": [
+        "PATCH"
+      ]
+    },
+    {
       "DownstreamPathTemplate": "/api/v1/Ticket",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
@@ -86,6 +128,48 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/tickets",
+      "UpstreamHttpMethod": [
+        "POST"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/v1/Ticket/{ticketNumber}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/tickets/{ticketNumber}",
+      "UpstreamHttpMethod": [
+        "GET"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/v1/Ticket/{ticketNumber}/cancel",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/tickets/{ticketNumber}/cancel",
+      "UpstreamHttpMethod": [
+        "POST"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/v1/Ticket/{ticketNumber}/board",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/tickets/{ticketNumber}/board",
       "UpstreamHttpMethod": [
         "POST"
       ]
@@ -114,6 +198,48 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/bookings",
+      "UpstreamHttpMethod": [
+        "POST"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/v1/Bookings",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/bookings",
+      "UpstreamHttpMethod": [
+        "GET"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/v1/Bookings/{pnrCode}/contact",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/bookings/{pnrCode}/contact",
+      "UpstreamHttpMethod": [
+        "PATCH"
+      ]
+    },
+    {
+      "DownstreamPathTemplate": "/api/v1/Bookings/{pnrCode}/cancel",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net",
+          "Port": 443
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/bookings/{pnrCode}/cancel",
       "UpstreamHttpMethod": [
         "POST"
       ]

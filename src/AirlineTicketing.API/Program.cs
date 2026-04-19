@@ -16,8 +16,15 @@ builder.Services.AddScoped<IFlightService, FlightService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
+var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(defaultConnection))
+{
+    throw new InvalidOperationException(
+        "ConnectionStrings:DefaultConnection is missing. Set ConnectionStrings__DefaultConnection in environment variables or Azure App Service settings.");
+}
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(defaultConnection));
 
 builder.Services.Configure<JwtSettings>(
     builder.Configuration.GetSection("JwtSettings"));
@@ -29,6 +36,12 @@ builder.Services.AddScoped<IBookingService, BookingService>();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>()
                   ?? throw new InvalidOperationException("JwtSettings configuration is missing.");
+
+if (string.IsNullOrWhiteSpace(jwtSettings.Key))
+{
+    throw new InvalidOperationException(
+        "JwtSettings:Key is missing. Set JwtSettings__Key in environment variables or Azure App Service settings.");
+}
 
 builder.Services.AddAuthentication(options =>
 {

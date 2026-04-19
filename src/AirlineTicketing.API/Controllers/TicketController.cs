@@ -29,4 +29,28 @@ public class TicketController : ControllerBase
 
         return Ok(result);
     }
+
+    [HttpGet("{ticketNumber}")]
+    [Authorize]
+    public async Task<IActionResult> GetTicket([FromRoute] string ticketNumber)
+    {
+        var result = await _ticketService.GetTicketAsync(ticketNumber);
+        return result is null ? NotFound(new { message = "Ticket not found." }) : Ok(result);
+    }
+
+    [HttpPost("{ticketNumber}/cancel")]
+    [Authorize]
+    public async Task<IActionResult> CancelTicket([FromRoute] string ticketNumber)
+    {
+        var result = await _ticketService.CancelTicketAsync(ticketNumber);
+        return Ok(result);
+    }
+
+    [HttpPost("{ticketNumber}/board")]
+    [Authorize]
+    public async Task<IActionResult> BoardTicket([FromRoute] string ticketNumber)
+    {
+        var result = await _ticketService.BoardTicketAsync(ticketNumber);
+        return Ok(result);
+    }
 }

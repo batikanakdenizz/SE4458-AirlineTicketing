@@ -34,16 +34,37 @@ Before deploying the gateway, update `src/AirlineTicketing.Gateway/ocelot.json` 
 | Add Flight | `POST /api/v1/Flight` | Yes | No |
 | Add Flight by File | `POST /api/v1/Flight/upload` | Yes | No |
 | Query Flight | `GET /api/v1/Flight/query` | No | Yes, max size 10 |
+| Flight Operational Detail | `GET /api/v1/Flight/{flightNumber}` | Yes | No |
+| Update Flight Status | `PATCH /api/v1/Flight/{flightNumber}/status` | Yes | No |
+| Delay Flight | `PATCH /api/v1/Flight/{flightNumber}/delay` | Yes | No |
 | Buy Ticket | `POST /api/v1/Ticket` | Yes | No |
+| Ticket Detail | `GET /api/v1/Ticket/{ticketNumber}` | Yes | No |
+| Cancel Ticket | `POST /api/v1/Ticket/{ticketNumber}/cancel` | Yes | No |
+| Board Passenger | `POST /api/v1/Ticket/{ticketNumber}/board` | Yes | No |
 | Check-in | `POST /api/v1/CheckIn` | No | No |
 | Query Flight Passenger List | `GET /api/v1/Flight/passengers` | Yes | Yes, max size 10 |
 | Login | `POST /api/v1/Auth/login` | No | No |
 | Create Booking / PNR | `POST /api/v1/Bookings` | No | No |
+| Search Bookings | `GET /api/v1/Bookings` | Yes | Yes, max size 10 |
 | Get Booking / PNR | `GET /api/v1/Bookings/{pnrCode}` | Yes | No |
+| Update Booking Contact | `PATCH /api/v1/Bookings/{pnrCode}/contact` | Yes | No |
+| Cancel Booking / Refund | `POST /api/v1/Bookings/{pnrCode}/cancel` | Yes | No |
 | Liveness Health Check | `GET /health/live` | No | No |
 | Readiness Health Check | `GET /health/ready` | No | No |
 
 The original academic endpoints are preserved. The booking endpoints extend the project toward a more realistic airline backend with PNR, passenger, ticket, payment, and idempotency support.
+
+New operational endpoints model real airline back-office flows:
+
+- Booking search by email, status, and departure date range.
+- Booking contact update for itinerary/customer-service corrections.
+- Booking cancellation with optional payment refund and seat release.
+- Ticket detail lookup by ticket number.
+- Individual ticket cancellation with capacity release.
+- Boarding after check-in and flight status validation.
+- Flight status management such as Scheduled, Delayed, Cancelled, Boarding, Departed, and Arrived.
+- Flight delay management with new departure and arrival times.
+- Operational flight detail including booked, checked-in, boarded, and available seat counts.
 
 ### Production-oriented booking request
 
@@ -97,10 +118,19 @@ Example routes:
 | `GET /gateway/flights/query` | `GET /api/v1/Flight/query` |
 | `POST /gateway/flights/upload` | `POST /api/v1/Flight/upload` |
 | `GET /gateway/flights/passengers` | `GET /api/v1/Flight/passengers` |
+| `GET /gateway/flights/{flightNumber}` | `GET /api/v1/Flight/{flightNumber}` |
+| `PATCH /gateway/flights/{flightNumber}/status` | `PATCH /api/v1/Flight/{flightNumber}/status` |
+| `PATCH /gateway/flights/{flightNumber}/delay` | `PATCH /api/v1/Flight/{flightNumber}/delay` |
 | `POST /gateway/tickets` | `POST /api/v1/Ticket` |
+| `GET /gateway/tickets/{ticketNumber}` | `GET /api/v1/Ticket/{ticketNumber}` |
+| `POST /gateway/tickets/{ticketNumber}/cancel` | `POST /api/v1/Ticket/{ticketNumber}/cancel` |
+| `POST /gateway/tickets/{ticketNumber}/board` | `POST /api/v1/Ticket/{ticketNumber}/board` |
 | `POST /gateway/checkin` | `POST /api/v1/CheckIn` |
 | `POST /gateway/bookings` | `POST /api/v1/Bookings` |
+| `GET /gateway/bookings` | `GET /api/v1/Bookings` |
 | `GET /gateway/bookings/{pnrCode}` | `GET /api/v1/Bookings/{pnrCode}` |
+| `PATCH /gateway/bookings/{pnrCode}/contact` | `PATCH /api/v1/Bookings/{pnrCode}/contact` |
+| `POST /gateway/bookings/{pnrCode}/cancel` | `POST /api/v1/Bookings/{pnrCode}/cancel` |
 | `GET /gateway/health/live` | `GET /health/live` |
 | `GET /gateway/health/ready` | `GET /health/ready` |
 
@@ -258,6 +288,22 @@ erDiagram
 - Error handling: unhandled service exceptions are returned as consistent JSON error envelopes with request metadata.
 
 ## Local Run
+
+Runtime configuration is read from environment variables or Azure App Service application settings. Real secrets must not be committed to `appsettings.json`.
+
+Required settings:
+
+| Setting | Purpose |
+| --- | --- |
+| `ConnectionStrings__DefaultConnection` | PostgreSQL/Supabase connection string |
+| `JwtSettings__Key` | JWT signing key |
+
+PowerShell example:
+
+```powershell
+$env:ConnectionStrings__DefaultConnection="Host=<supabase-pooler-host>;Database=postgres;Username=<username>;Password=<password>;SSL Mode=Require;Trust Server Certificate=true"
+$env:JwtSettings__Key="<long-random-jwt-signing-key>"
+```
 
 Build the solution:
 
