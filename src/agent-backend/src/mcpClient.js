@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const MCP_SERVER_PATH = path.resolve(__dirname, '../../mcp-server/src/index.js');
+const MCP_SERVER_PATH = path.resolve(__dirname, '../mcp-server/index.js');
 
 let client = null;
 let cachedTools = null;

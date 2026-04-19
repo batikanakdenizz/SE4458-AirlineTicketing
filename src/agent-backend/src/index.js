@@ -5,9 +5,18 @@ import { config } from './config.js';
 import { initMcpClient } from './mcpClient.js';
 import { processMessage } from './agent.js';
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Serve static frontend files
+app.use(express.static(path.join(__dirname, '../public')));
 
 // ── POST /api/chat ─────────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
@@ -40,6 +49,11 @@ app.post('/api/chat', async (req, res) => {
 // ── GET /api/health ────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', provider: config.llmProvider, model: config.ollamaModel });
+});
+
+// ── Catch-all for React ──────────────────────────────────────────
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
 // ── Start ──────────────────────────────────────────────────────
