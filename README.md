@@ -190,7 +190,7 @@ erDiagram
 
     CHECKIN {
         int Id PK
-        int TicketId FK_UK
+        int TicketId FK
         int FlightId FK
         int SeatNumber
         datetime CheckInTime
@@ -221,7 +221,7 @@ erDiagram
 
     PAYMENT {
         int Id PK
-        int BookingId FK_UK
+        int BookingId FK
         string Provider
         string ProviderReference UK
         decimal Amount
