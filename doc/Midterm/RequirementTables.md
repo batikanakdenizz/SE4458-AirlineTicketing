@@ -32,27 +32,6 @@ Create an API project that will perform below requirements for an airline ticket
 
 ---
 
-## Students
-
-- Toprak Orman  
-- Ilayda Gun  
-- EGEMEN ÜNER  
-- EGE SARP ERDEM  
-- BARIŞ HANSU  
-- YAGIZ YUNGUL  
-- BERK ATES  
-- BATUHAN SALCAN  
-- MUSTAFA BERKAY DÜZENLİ  
-- BATIKAN AKDENİZ  
-- İDİL BALANDI  
-- AYCAN KURT  
-- AYFERNAZ BAYGIN  
-- EREN KARCI  
-- DEMİR DEMİRDÖĞEN  
-- SILA BARIŞIK  
-- CENK SERBEST  
-
----
 
 ## COMMON REQUIREMENTS
 
