@@ -14,18 +14,35 @@ The project follows a layered structure:
 - Domain: core entities and enums
 - Gateway: Ocelot routing and rate limiting
 
+## 🤖 AI Agent Integration (Midterm Part 2)
+
+As an extension to the .NET backend, an AI-powered Chat Agent ("SkyAgent") was developed to provide a natural language interface for flight queries and bookings.
+
+**Design & Architecture:**
+- **MCP Server (Model Context Protocol):** A Node.js service that translates the .NET Ocelot Gateway REST endpoints into executable tools (`query_flights`, `create_booking`, `check_in`, etc.) for the LLM. It securely manages JWT authentication and injects rate-limiting headers (`Client`).
+- **Agent Backend:** An Express server that orchestrates the conversational loop. It maintains session history in-memory (stateful) and acts as the bridge between the UI and the MCP Server.
+- **LLM Brain (Groq API):** We utilize the **Llama-3.3-70b-versatile** model via Groq for ultra-fast, accurate tool calling. 
+- **Chat Frontend:** A React + Vite UI providing a premium, dark-themed conversational experience.
+
+**Assumptions & Guardrails:**
+- **IATA Conversion:** The LLM is instructed to automatically map city names to IATA codes (e.g., Izmir -> ADB).
+- **Date Calculation:** Natural language dates ("tomorrow", "next week") are dynamically calculated based on the server's current date.
+- **Mandatory Passenger Details:** To prevent the AI from generating fake passenger profiles, strict system prompt guardrails were implemented. The LLM *must* explicitly ask the user for their First Name, Last Name, and Email before calling any booking tools.
+
+**Issues Encountered:**
+- **LLM Hallucinations:** When using smaller models (like Qwen2.5 3B), the AI occasionally hallucinated successful API responses or generated fake passenger names (e.g., "John Doe") instead of properly invoking the `create_booking` tool. This was resolved by switching to a more powerful model (Llama-3.3-70b via Groq) and enforcing strict guardrails in the system prompt.
+- **Rate Limiting (503 Errors):** The Ocelot Gateway aggressively blocked the MCP Server until the `Client` header was dynamically injected into every tool request.
+
 ## Deployment
 
-Backend API Swagger URL:
+**Backend API Swagger URL:**
+- https://backendapi-enhce4cbfrdwh8gb.francecentral-01.azurewebsites.net
 
-- To be updated after final Azure deployment.
+**API Gateway URL:**
+- https://gatewayasgn-eegrhjd3grb7eqhf.francecentral-01.azurewebsites.net
 
-API Gateway URL:
-
-- To be updated after final Azure deployment.
-
-Before deploying the gateway, update `src/AirlineTicketing.Gateway/ocelot.json` so every `DownstreamHostAndPorts.Host` value points to the deployed backend API host.
-
+**YouTube Demo Video Link:**
+- [Insert YouTube Video Link Here]
 
 ## API Endpoints
 
