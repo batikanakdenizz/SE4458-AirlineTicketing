@@ -487,3 +487,12 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Node.js / Frontend build output
+dist/
+ 
+# Midterm Agent Ignores
+demo_presentation_guide.md
+*.log
+logs/
+.env

@@ -1,0 +1,19 @@
+{
+  "name": "airline-agent-backend",
+  "version": "1.0.0",
+  "description": "AI Agent backend - orchestrates LLM and MCP for airline chat",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ollama": "^0.5.14",
+    "openai": "^6.34.0",
+    "uuid": "^11.1.0"
+  }
+}
