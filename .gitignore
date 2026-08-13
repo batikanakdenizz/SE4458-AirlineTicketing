@@ -482,3 +482,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Publish output - deployment packages are built, not committed
+*.zip
+publish/
